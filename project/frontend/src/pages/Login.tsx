@@ -1,0 +1,88 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
+const Login: React.FC = () => {
+    const navigate = useNavigate();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleLogin = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email || !password) {
+            setError('Please provide email and password');
+            return;
+        }
+        // Simulate login
+        localStorage.setItem('userToken', 'fake-jwt-token-123');
+        navigate('/dashboard');
+    };
+
+    return (
+        <div style={styles.page}>
+            <div style={styles.card}>
+                <div style={styles.header}>
+                    <h1 style={styles.title}>🕉 Sanskrit Chant System</h1>
+                    <h2 style={styles.subtitle}>Welcome back</h2>
+                </div>
+
+                {error && (
+                    <div style={styles.errorBanner} role="alert">
+                        ⚠️ {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleLogin} style={styles.form}>
+                    <label style={styles.label} htmlFor="email">Email Address</label>
+                    <input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        style={styles.input}
+                        required
+                    />
+
+                    <label style={styles.label} htmlFor="password">Password</label>
+                    <input
+                        id="password"
+                        type="password"
+                        placeholder="Your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        style={styles.input}
+                        required
+                    />
+
+                    <button type="submit" style={styles.btn}>
+                        Log In
+                    </button>
+                </form>
+
+                <p style={styles.footer}>
+                    Don't have an account?{' '}
+                    <Link to="/signup" style={styles.link}>Sign up</Link>
+                </p>
+            </div>
+        </div>
+    );
+};
+
+// Reuse Signup styles roughly
+const styles: Record<string, React.CSSProperties> = {
+    page: { minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    card: { background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '16px', padding: '2.5rem 2rem', width: '100%', maxWidth: '420px' },
+    header: { textAlign: 'center', marginBottom: '1.75rem' },
+    title: { fontSize: '1.1rem', color: '#e2c97e', margin: 0 },
+    subtitle: { fontSize: '1.5rem', color: '#ffffff', marginTop: '0.5rem', fontWeight: 700 },
+    errorBanner: { background: 'rgba(239,68,68,0.18)', color: '#fca5a5', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem' },
+    form: { display: 'flex', flexDirection: 'column', gap: '0.35rem' },
+    label: { color: '#a0aec0', fontSize: '0.82rem', marginTop: '0.75rem', fontWeight: 600 },
+    input: { padding: '0.7rem 0.9rem', borderRadius: '8px', background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' },
+    btn: { marginTop: '1.4rem', padding: '0.8rem', borderRadius: '8px', background: 'linear-gradient(90deg, #e2c97e, #c9a227)', color: '#1a1a2e', fontWeight: 700, border: 'none', cursor: 'pointer' },
+    footer: { textAlign: 'center', marginTop: '1.25rem', color: '#718096', fontSize: '0.88rem' },
+    link: { color: '#e2c97e', textDecoration: 'none', fontWeight: 600 },
+};
+
+export default Login;
