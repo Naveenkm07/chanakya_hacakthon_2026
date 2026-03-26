@@ -19,6 +19,10 @@ const Dashboard: React.FC = () => {
         navigate('/login');
     };
 
+    const DEMO_SYLLABLES = ['गु', 'रु', 'ब्र', 'ह्मा', 'गु', 'रुः', 'वि', 'ष्णुः'];
+    const DEMO_PITCH = [261, 293, 329, 349, 392, 440, 349, 329];
+    const DEMO_DURATION = [0.4, 0.3, 0.5, 0.6, 0.4, 0.5, 0.3, 0.7];
+
     const handleGenerate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!text.trim()) return;
@@ -29,6 +33,7 @@ const Dashboard: React.FC = () => {
         setGraphData([]);
 
         try {
+            const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
             const res = await api.post('/api/generate-chant', { text: text.trim() });
             const { audio_url, pitch, duration, syllables } = res.data;
 
@@ -40,12 +45,21 @@ const Dashboard: React.FC = () => {
             }));
 
             setGraphData(formattedData);
-            setAudioUrl(`http://localhost:8000${audio_url}`);
-        } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to generate chant. Ensure backend is running.');
+            setAudioUrl(`${backendUrl}${audio_url}`);
+        } catch {
+            // Backend not available — show demo data so the UI still works
+            const demoData: ChantData[] = DEMO_SYLLABLES.map((syl, idx) => ({
+                index: idx + 1,
+                syllable: syl,
+                pitch: DEMO_PITCH[idx],
+                duration: DEMO_DURATION[idx]
+            }));
+            setGraphData(demoData);
+            setError('⚠️ Backend offline — showing demo visualization. Connect backend for full audio generation.');
         } finally {
             setLoading(false);
         }
+
     };
 
     return (
