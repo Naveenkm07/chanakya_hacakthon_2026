@@ -21,6 +21,50 @@ const Dashboard: React.FC = () => {
     const DEMO_PITCH = [261, 293, 329, 349, 392, 440, 349, 329];
     const DEMO_DURATION = [0.4, 0.3, 0.5, 0.6, 0.4, 0.5, 0.3, 0.7];
 
+    const totalDuration = DEMO_DURATION.reduce((a, b) => a + b + 0.05, 0.1);
+
+    const downloadDemoAudio = async () => {
+        try {
+            const sampleRate = 44100;
+            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalDuration), sampleRate);
+            let time = 0.1;
+            DEMO_PITCH.forEach((freq, idx) => {
+                const osc = offlineCtx.createOscillator();
+                const gain = offlineCtx.createGain();
+                osc.connect(gain);
+                gain.connect(offlineCtx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, time);
+                gain.gain.setValueAtTime(0.4, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + DEMO_DURATION[idx]);
+                osc.start(time);
+                osc.stop(time + DEMO_DURATION[idx]);
+                time += DEMO_DURATION[idx] + 0.05;
+            });
+            const renderedBuffer = await offlineCtx.startRendering();
+            // Convert AudioBuffer to WAV
+            const numSamples = renderedBuffer.length;
+            const wavBuffer = new ArrayBuffer(44 + numSamples * 2);
+            const view = new DataView(wavBuffer);
+            const writeStr = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+            writeStr(0, 'RIFF'); view.setUint32(4, 36 + numSamples * 2, true); writeStr(8, 'WAVE');
+            writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+            writeStr(36, 'data'); view.setUint32(40, numSamples * 2, true);
+            const channelData = renderedBuffer.getChannelData(0);
+            let offset = 44;
+            for (let i = 0; i < numSamples; i++, offset += 2) {
+                const s = Math.max(-1, Math.min(1, channelData[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+            const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'sanskrit_chant_demo.wav'; a.click();
+            URL.revokeObjectURL(url);
+        } catch { alert('Download failed. Try a different browser.'); }
+    };
+
     const handleLogout = () => {
         logout();
         navigate('/login');
@@ -132,6 +176,9 @@ const Dashboard: React.FC = () => {
                                 style={styles.playBtn}
                             >
                                 ▶ Play Chant Audio
+                            </button>
+                            <button onClick={downloadDemoAudio} style={{ ...styles.playBtn, marginTop: '0.75rem', background: 'rgba(226,201,126,0.15)', border: '1px solid #e2c97e', color: '#e2c97e' }}>
+                                ⬇ Download Audio
                             </button>
                         </div>
                     )}
