@@ -47,7 +47,7 @@ const Dashboard: React.FC = () => {
             setGraphData(formattedData);
             setAudioUrl(`${backendUrl}${audio_url}`);
         } catch {
-            // Backend not available — show demo data so the UI still works
+            // Backend not available — show demo data and synthesize audio
             const demoData: ChantData[] = DEMO_SYLLABLES.map((syl, idx) => ({
                 index: idx + 1,
                 syllable: syl,
@@ -55,7 +55,27 @@ const Dashboard: React.FC = () => {
                 duration: DEMO_DURATION[idx]
             }));
             setGraphData(demoData);
-            // silently show demo — no error banner
+
+            // Synthesize audio from pitch data using Web Audio API
+            try {
+                const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                const ctx = new AudioCtx();
+                let time = ctx.currentTime + 0.1;
+                DEMO_PITCH.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, time);
+                    gain.gain.setValueAtTime(0.4, time);
+                    gain.gain.exponentialRampToValueAtTime(0.001, time + DEMO_DURATION[idx]);
+                    osc.start(time);
+                    osc.stop(time + DEMO_DURATION[idx]);
+                    time += DEMO_DURATION[idx] + 0.05;
+                });
+            } catch { /* audio not supported */ }
+
         } finally {
             setLoading(false);
         }
