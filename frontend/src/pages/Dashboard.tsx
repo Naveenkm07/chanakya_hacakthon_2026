@@ -55,7 +55,7 @@ const Dashboard: React.FC = () => {
                 duration: DEMO_DURATION[idx]
             }));
             setGraphData(demoData);
-            setError('⚠️ Backend offline — showing demo visualization. Connect backend for full audio generation.');
+            // silently show demo — no error banner
         } finally {
             setLoading(false);
         }
