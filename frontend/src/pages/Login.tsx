@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { login } from '../services/localAuth';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
@@ -18,18 +18,10 @@ const Login: React.FC = () => {
         }
         setLoading(true);
         try {
-            const response = await api.post('/api/login', {
-                email: email.trim().toLowerCase(),
-                password,
-            });
-            localStorage.setItem('userToken', response.data.token);
-            if (response.data.user_name) {
-                localStorage.setItem('userName', response.data.user_name);
-            }
+            await login(email.trim().toLowerCase(), password);
             navigate('/dashboard');
         } catch (err: any) {
-            const detail = err?.response?.data?.detail;
-            setError(detail ?? 'Invalid email or password');
+            setError(err?.message ?? 'Invalid email or password');
         } finally {
             setLoading(false);
         }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { logout } from '../services/localAuth';
 import { PitchGraph, type ChantData } from '../components/PitchGraph';
 
 const Dashboard: React.FC = () => {
@@ -14,7 +15,7 @@ const Dashboard: React.FC = () => {
     const [graphData, setGraphData] = useState<ChantData[]>([]);
 
     const handleLogout = () => {
-        localStorage.removeItem('userToken');
+        logout();
         navigate('/login');
     };
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
+import { register } from '../services/localAuth';
 
 interface FormState {
     name: string;
@@ -38,19 +38,10 @@ const Signup: React.FC = () => {
 
         setLoading(true);
         try {
-            const response = await api.post('/api/signup', {
-                name: form.name.trim(),
-                email: form.email.trim().toLowerCase(),
-                password: form.password,
-            });
-            localStorage.setItem('userToken', response.data.token);
-            if (response.data.user_name) {
-                localStorage.setItem('userName', response.data.user_name);
-            }
+            await register(form.name.trim(), form.email.trim().toLowerCase(), form.password);
             navigate('/dashboard');
         } catch (err: any) {
-            const detail = err?.response?.data?.detail;
-            setError(detail ?? 'Something went wrong. Please try again.');
+            setError(err?.message ?? 'Something went wrong. Please try again.');
         } finally {
             setLoading(false);
         }
