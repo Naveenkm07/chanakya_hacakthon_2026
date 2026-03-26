@@ -17,32 +17,69 @@ const Dashboard: React.FC = () => {
     const [graphData, setGraphData] = useState<ChantData[]>([]);
     const [demoMode, setDemoMode] = useState(false);
 
-    const DEMO_SYLLABLES = ['गु', 'रु', 'ब्र', 'ह्मा', 'गु', 'रुः', 'वि', 'ष्णुः'];
-    const DEMO_PITCH = [261, 293, 329, 349, 392, 440, 349, 329];
-    const DEMO_DURATION = [0.4, 0.3, 0.5, 0.6, 0.4, 0.5, 0.3, 0.7];
+    // Convert typed text into unique pitch/duration data per syllable
+    const textToChantData = (inputText: string): ChantData[] => {
+        // Split Sanskrit text into grapheme clusters (syllables)
+        const cleaned = inputText.trim().replace(/\s+/g, ' ');
+        // Split on spaces or every 2-3 chars for Sanskrit
+        const parts: string[] = [];
+        const segmenter = (typeof (Intl as any).Segmenter !== 'undefined')
+            ? new (Intl as any).Segmenter('hi', { granularity: 'grapheme' })
+            : null;
+        if (segmenter) {
+            const segs = [...segmenter.segment(cleaned)].map((s: any) => s.segment);
+            // Group into syllable-sized chunks
+            let chunk = '';
+            segs.forEach((char: string) => {
+                chunk += char;
+                // Break on vowel matras, visarga, chandrabindu (natural syllable endings)
+                if (/[\u093E-\u094D\u0902\u0903\u0900\u0901]/.test(char) || chunk.length >= 3) {
+                    parts.push(chunk); chunk = '';
+                }
+            });
+            if (chunk) parts.push(chunk);
+        } else {
+            // Fallback: split every 2 chars
+            for (let i = 0; i < cleaned.length; i += 2) parts.push(cleaned.slice(i, i + 2));
+        }
+        const filtered = parts.filter(p => p.trim().length > 0).slice(0, 16);
+        if (filtered.length === 0) return [];
 
-    const totalDuration = DEMO_DURATION.reduce((a, b) => a + b + 0.05, 0.1);
+        // Sanskrit raga-inspired scale (Sa Re Ga Ma Pa Dha Ni)
+        const RAGA_SCALE = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25];
+
+        return filtered.map((syl, idx) => {
+            // Derive pitch from char code → map to raga scale
+            const charCode = syl.codePointAt(0) || 2400;
+            const scaleIdx = (charCode + idx) % RAGA_SCALE.length;
+            const octaveShift = ((charCode % 3) - 1) * 0.15; // slight detuning for uniqueness
+            const pitch = Math.round(RAGA_SCALE[scaleIdx] * (1 + octaveShift));
+            // Duration varies with syllable length and position
+            const duration = parseFloat((0.3 + (syl.length * 0.1) + (idx % 3) * 0.1).toFixed(2));
+            return { index: idx + 1, syllable: syl, pitch, duration };
+        });
+    };
 
     const downloadDemoAudio = async () => {
         try {
             const sampleRate = 44100;
-            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalDuration), sampleRate);
+            const totalDur = graphData.reduce((a, d) => a + d.duration + 0.05, 0.1);
+            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalDur), sampleRate);
             let time = 0.1;
-            DEMO_PITCH.forEach((freq, idx) => {
+            graphData.forEach((d) => {
                 const osc = offlineCtx.createOscillator();
                 const gain = offlineCtx.createGain();
                 osc.connect(gain);
                 gain.connect(offlineCtx.destination);
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, time);
+                osc.frequency.setValueAtTime(d.pitch, time);
                 gain.gain.setValueAtTime(0.4, time);
-                gain.gain.exponentialRampToValueAtTime(0.001, time + DEMO_DURATION[idx]);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + d.duration);
                 osc.start(time);
-                osc.stop(time + DEMO_DURATION[idx]);
-                time += DEMO_DURATION[idx] + 0.05;
+                osc.stop(time + d.duration);
+                time += d.duration + 0.05;
             });
             const renderedBuffer = await offlineCtx.startRendering();
-            // Convert AudioBuffer to WAV
             const numSamples = renderedBuffer.length;
             const wavBuffer = new ArrayBuffer(44 + numSamples * 2);
             const view = new DataView(wavBuffer);
@@ -60,7 +97,7 @@ const Dashboard: React.FC = () => {
             const blob = new Blob([wavBuffer], { type: 'audio/wav' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = 'sanskrit_chant_demo.wav'; a.click();
+            a.href = url; a.download = 'sanskrit_chant.wav'; a.click();
             URL.revokeObjectURL(url);
         } catch { alert('Download failed. Try a different browser.'); }
     };
@@ -95,20 +132,34 @@ const Dashboard: React.FC = () => {
             setGraphData(formattedData);
             setAudioUrl(`${backendUrl}${audio_url}`);
         } catch {
-            // Backend not available — show demo data and synthesize audio
-            const demoData: ChantData[] = DEMO_SYLLABLES.map((syl, idx) => ({
-                index: idx + 1,
-                syllable: syl,
-                pitch: DEMO_PITCH[idx],
-                duration: DEMO_DURATION[idx]
-            }));
+            // Backend not available — generate from typed text
+            const demoData = textToChantData(text);
+            if (demoData.length === 0) {
+                setError('Please enter some Sanskrit text.');
+                setLoading(false);
+                return;
+            }
             setGraphData(demoData);
             setDemoMode(true);
-
+            try {
+                const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                const ctx = new AudioCtx();
+                let time = ctx.currentTime + 0.1;
+                demoData.forEach((d) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(d.pitch, time);
+                    gain.gain.setValueAtTime(0.4, time);
+                    gain.gain.exponentialRampToValueAtTime(0.001, time + d.duration);
+                    osc.start(time); osc.stop(time + d.duration);
+                    time += d.duration + 0.05;
+                });
+            } catch { /* audio not supported */ }
         } finally {
             setLoading(false);
         }
-
     };
 
     return (
@@ -160,16 +211,16 @@ const Dashboard: React.FC = () => {
                                         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
                                         const ctx = new AudioCtx();
                                         let time = ctx.currentTime + 0.1;
-                                        DEMO_PITCH.forEach((freq, idx) => {
+                                        graphData.forEach((d) => {
                                             const osc = ctx.createOscillator();
                                             const gain = ctx.createGain();
                                             osc.connect(gain); gain.connect(ctx.destination);
                                             osc.type = 'sine';
-                                            osc.frequency.setValueAtTime(freq, time);
+                                            osc.frequency.setValueAtTime(d.pitch, time);
                                             gain.gain.setValueAtTime(0.4, time);
-                                            gain.gain.exponentialRampToValueAtTime(0.001, time + DEMO_DURATION[idx]);
-                                            osc.start(time); osc.stop(time + DEMO_DURATION[idx]);
-                                            time += DEMO_DURATION[idx] + 0.05;
+                                            gain.gain.exponentialRampToValueAtTime(0.001, time + d.duration);
+                                            osc.start(time); osc.stop(time + d.duration);
+                                            time += d.duration + 0.05;
                                         });
                                     } catch { }
                                 }}
