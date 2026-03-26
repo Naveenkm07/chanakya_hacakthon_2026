@@ -239,10 +239,9 @@ export const PitchGraph: React.FC<PitchGraphProps> = ({ data }) => {
                         <YAxis dataKey="y" name="Duration (s)" stroke="#a0aec0" tick={{ fill: '#a0aec0' }} label={{ value: 'Duration (s)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 11 }} />
                         <ZAxis dataKey="z" range={[60, 400]} name="Energy" />
                         <Tooltip cursor={{ strokeDasharray: '3 3' }}
-                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff', borderRadius: '8px' }}
-                            formatter={(val: any, name: string) => [val, name]} />
+                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff', borderRadius: '8px' }} />
                         <Scatter data={bubbleData} name="Syllables">
-                            {bubbleData.map((entry, i) => (
+                            {bubbleData.map((_, i) => (
                                 <Cell key={i} fill={COLORS[i % COLORS.length]} fillOpacity={0.8} />
                             ))}
                         </Scatter>
