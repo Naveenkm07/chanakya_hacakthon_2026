@@ -1,21 +1,38 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
         if (!email || !password) {
             setError('Please provide email and password');
             return;
         }
-        // Simulate login
-        localStorage.setItem('userToken', 'fake-jwt-token-123');
-        navigate('/dashboard');
+        setLoading(true);
+        try {
+            const response = await api.post('/api/login', {
+                email: email.trim().toLowerCase(),
+                password,
+            });
+            localStorage.setItem('userToken', response.data.token);
+            if (response.data.user_name) {
+                localStorage.setItem('userName', response.data.user_name);
+            }
+            navigate('/dashboard');
+        } catch (err: any) {
+            const detail = err?.response?.data?.detail;
+            setError(detail ?? 'Invalid email or password');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -55,8 +72,8 @@ const Login: React.FC = () => {
                         required
                     />
 
-                    <button type="submit" style={styles.btn}>
-                        Log In
+                    <button type="submit" disabled={loading} style={{ ...styles.btn, opacity: loading ? 0.7 : 1 }}>
+                        {loading ? 'Logging In...' : 'Log In'}
                     </button>
                 </form>
 

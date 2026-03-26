@@ -38,13 +38,16 @@ const Signup: React.FC = () => {
 
         setLoading(true);
         try {
-            await api.post('/api/signup', {
+            const response = await api.post('/api/signup', {
                 name: form.name.trim(),
                 email: form.email.trim().toLowerCase(),
                 password: form.password,
             });
-            alert('Signup successful! Please log in.');
-            navigate('/');
+            localStorage.setItem('userToken', response.data.token);
+            if (response.data.user_name) {
+                localStorage.setItem('userName', response.data.user_name);
+            }
+            navigate('/dashboard');
         } catch (err: any) {
             const detail = err?.response?.data?.detail;
             setError(detail ?? 'Something went wrong. Please try again.');
