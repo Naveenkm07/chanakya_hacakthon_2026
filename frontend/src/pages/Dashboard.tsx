@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { logout } from '../services/localAuth';
+import { useTheme } from '../context/ThemeContext';
 import { PitchGraph, type ChantData } from '../components/PitchGraph';
 
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
+    const { theme: _theme } = useTheme(); // theme available for future use
     const [text, setText] = useState('गुरुर्ब्रह्मा');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -96,6 +98,13 @@ const Dashboard: React.FC = () => {
                             <audio controls src={audioUrl} style={styles.audioPlayer} autoPlay>
                                 Your browser does not support the audio element.
                             </audio>
+                            <a
+                                href={audioUrl}
+                                download="sanskrit_chant.wav"
+                                style={{ ...styles.playBtn, display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: '0.75rem' }}
+                            >
+                                ⬇ Download Audio
+                            </a>
                         </div>
                     )}
                     {demoMode && (
@@ -147,19 +156,18 @@ const Dashboard: React.FC = () => {
 const styles: Record<string, React.CSSProperties> = {
     page: {
         minHeight: 'calc(100vh - 70px)',
-        backgroundColor: '#0a0f1c',
-        color: '#fff',
+        color: 'inherit',
         padding: '2rem',
         fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
     },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' },
     pageTitle: { color: '#e2c97e', fontSize: '2rem', margin: 0, fontWeight: 700 },
-    logoutBtn: { padding: '0.4rem 1.2rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '20px', cursor: 'pointer', fontWeight: 600, transition: 'background 0.2s' },
+    logoutBtn: { padding: '0.4rem 1.2rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '20px', cursor: 'pointer', fontWeight: 600 },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', alignItems: 'start' },
-    card: { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', padding: '2.5rem', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' },
-    cardTitle: { color: '#fff', fontSize: '1.4rem', margin: '0 0 1.5rem 0', fontWeight: 600, letterSpacing: '0.02em' },
+    card: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '2.5rem', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)' },
+    cardTitle: { color: '#e2c97e', fontSize: '1.4rem', margin: '0 0 1.5rem 0', fontWeight: 600 },
     form: { display: 'flex', flexDirection: 'column', gap: '1rem' },
-    textarea: { width: '100%', padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.04)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.2rem', resize: 'vertical', outline: 'none' },
+    textarea: { width: '100%', padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.06)', color: 'inherit', border: '1px solid rgba(255,255,255,0.15)', fontSize: '1.2rem', resize: 'vertical', outline: 'none' },
     btn: { padding: '1rem', borderRadius: '12px', background: 'linear-gradient(90deg, #e2c97e, #fde047)', color: '#0a0f1c', fontSize: '1.1rem', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(226, 201, 126, 0.2)' },
     error: { color: '#fca5a5', background: 'rgba(239,68,68,0.1)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)' },
     audioSection: { marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' },
