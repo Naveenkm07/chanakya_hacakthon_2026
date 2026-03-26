@@ -13,15 +13,16 @@ const Dashboard: React.FC = () => {
     // API response state
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [graphData, setGraphData] = useState<ChantData[]>([]);
+    const [demoMode, setDemoMode] = useState(false);
+
+    const DEMO_SYLLABLES = ['गु', 'रु', 'ब्र', 'ह्मा', 'गु', 'रुः', 'वि', 'ष्णुः'];
+    const DEMO_PITCH = [261, 293, 329, 349, 392, 440, 349, 329];
+    const DEMO_DURATION = [0.4, 0.3, 0.5, 0.6, 0.4, 0.5, 0.3, 0.7];
 
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
-
-    const DEMO_SYLLABLES = ['गु', 'रु', 'ब्र', 'ह्मा', 'गु', 'रुः', 'वि', 'ष्णुः'];
-    const DEMO_PITCH = [261, 293, 329, 349, 392, 440, 349, 329];
-    const DEMO_DURATION = [0.4, 0.3, 0.5, 0.6, 0.4, 0.5, 0.3, 0.7];
 
     const handleGenerate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,6 +32,7 @@ const Dashboard: React.FC = () => {
         setError('');
         setAudioUrl(null);
         setGraphData([]);
+        setDemoMode(false);
 
         try {
             const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -55,26 +57,7 @@ const Dashboard: React.FC = () => {
                 duration: DEMO_DURATION[idx]
             }));
             setGraphData(demoData);
-
-            // Synthesize audio from pitch data using Web Audio API
-            try {
-                const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-                const ctx = new AudioCtx();
-                let time = ctx.currentTime + 0.1;
-                DEMO_PITCH.forEach((freq, idx) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, time);
-                    gain.gain.setValueAtTime(0.4, time);
-                    gain.gain.exponentialRampToValueAtTime(0.001, time + DEMO_DURATION[idx]);
-                    osc.start(time);
-                    osc.stop(time + DEMO_DURATION[idx]);
-                    time += DEMO_DURATION[idx] + 0.05;
-                });
-            } catch { /* audio not supported */ }
+            setDemoMode(true);
 
         } finally {
             setLoading(false);
@@ -113,6 +96,34 @@ const Dashboard: React.FC = () => {
                             <audio controls src={audioUrl} style={styles.audioPlayer} autoPlay>
                                 Your browser does not support the audio element.
                             </audio>
+                        </div>
+                    )}
+                    {demoMode && (
+                        <div style={styles.audioSection}>
+                            <h3 style={styles.sectionTitle}>Generated Chant Audio</h3>
+                            <button
+                                onClick={() => {
+                                    try {
+                                        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                                        const ctx = new AudioCtx();
+                                        let time = ctx.currentTime + 0.1;
+                                        DEMO_PITCH.forEach((freq, idx) => {
+                                            const osc = ctx.createOscillator();
+                                            const gain = ctx.createGain();
+                                            osc.connect(gain); gain.connect(ctx.destination);
+                                            osc.type = 'sine';
+                                            osc.frequency.setValueAtTime(freq, time);
+                                            gain.gain.setValueAtTime(0.4, time);
+                                            gain.gain.exponentialRampToValueAtTime(0.001, time + DEMO_DURATION[idx]);
+                                            osc.start(time); osc.stop(time + DEMO_DURATION[idx]);
+                                            time += DEMO_DURATION[idx] + 0.05;
+                                        });
+                                    } catch { }
+                                }}
+                                style={styles.playBtn}
+                            >
+                                ▶ Play Chant Audio
+                            </button>
                         </div>
                     )}
                 </div>
@@ -154,6 +165,7 @@ const styles: Record<string, React.CSSProperties> = {
     audioSection: { marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' },
     sectionTitle: { color: '#a0aec0', fontSize: '0.9rem', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 },
     audioPlayer: { width: '100%', outline: 'none', borderRadius: '8px' },
+    playBtn: { width: '100%', padding: '0.8rem', borderRadius: '12px', background: 'linear-gradient(90deg, #e2c97e, #fde047)', color: '#0a0f1c', fontSize: '1rem', fontWeight: 700, border: 'none', cursor: 'pointer' },
     emptyState: { color: '#64748b', padding: '4rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }
 };
 
