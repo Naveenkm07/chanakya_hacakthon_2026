@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ChantGuru</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel&display=swap" rel="stylesheet">
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Cinzel', serif;
+    background: radial-gradient(circle at center, #1a120b, #000);
+    color: gold;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    width: 90%;
+    max-width: 700px;
+    text-align: center;
+}
+
+h1 {
+    font-size: 42px;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px gold;
+}
+
+textarea {
+    width: 100%;
+    height: 100px;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid gold;
+    background: #111;
+    color: gold;
+    font-size: 16px;
+}
+
+.buttons {
+    margin-top: 15px;
+}
+
+button {
+    padding: 12px 25px;
+    margin: 10px;
+    background: linear-gradient(45deg, gold, orange);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.box {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid gold;
+    border-radius: 12px;
+    background: rgba(255, 215, 0, 0.05);
+}
+
+.audio-row {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.audio-row .box {
+    flex: 1;
+}
+
+audio {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.logout {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.syllable {
+    transition: all 0.3s ease;
+    padding: 5px;
+    margin: 3px;
+    display: inline-block;
+    border-radius: 5px;
+    font-size: 20px;
+}
+#spokenText {
+    margin-top: 10px;
+    font-size: 18px;
+}
+</style>
+</head>
+
+<body>
+
+<button class="logout" onclick="logout()">Logout</button>
+
+<div class="container">
+
+    <h1>ChantGuru</h1>
+
+    <textarea id="text" placeholder="Enter Sanskrit text"></textarea>
+
+    <label style="margin-top:15px; display:block;">Practice Speed:</label>
+    <select id="speed" style="
+        padding:8px;
+        border-radius:6px;
+        background:#111;
+        color:gold;
+        border:1px solid gold;
+        margin-top:5px;
+    ">
+        <option value="1">Normal</option>
+        <option value="1.5">Fast</option>
+        <option value="2">Very Fast</option>
+        <option value="0.7">Slow</option>
+        <option value="0.5">Very Slow</option>
+    </select>
+
+    <div class="buttons">
+        <button type="button" onclick="generate()">Generate</button>
+        <button type="button" onclick="compare()">Compare</button>
+        <button type="button" onclick="practice()">Practice Mode</button>
+    </div>
+
+    <div class="box">
+        <h3>Chant Audio</h3>
+        <audio id="chantPlayer" controls></audio>
+    </div>
+
+    <div class="audio-row">
+        <div class="box">
+            <h3>Normal</h3>
+            <audio id="normalPlayer" controls></audio>
+        </div>
+
+        <div class="box">
+            <h3>Chant</h3>
+            <audio id="comparePlayer" controls></audio>
+        </div>
+    </div>
+
+    <div class="box">
+        <h3>Syllables</h3>
+        <div id="syllables"></div>
+    </div>
+
+    <div class="box">
+        <h3>Guess Laghu or Guru</h3>
+        <div id="quizSyllable" style="font-size:30px; margin:10px;"></div>
+
+        <button type="button" onclick="answer('L')">Laghu</button>
+        <button type="button" onclick="answer('G')">Guru</button>
+
+        <div id="quizResult" style="margin-top:10px;"></div>
+        <div id="score" style="margin-top:10px;"></div>
+    </div>
+    <div class="box">
+    <h3> Pronunciation Check</h3>
+
+    <button onclick="startListening()">Start Speaking</button>
+
+    <div id="spokenText"></div>
+    <div id="pronunciationScore"></div>
+</div>
+   
+
+</div>
+
+<script>
+const BASE_URL = "http://localhost:3000";
+
+let quizIndex = 0;
+let score = 0;
+let currentData = null;
+let isQuizMode = false;
+
+
+
+function getToken() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        window.location.href = "login.html";
+    }
+    return token;
+}
+
+function logout() {
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+}
+
+
+
+function startListening() {
+
+    const status = document.getElementById("spokenText");
+    status.innerText = "🎤 Listening... Speak now";
+
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+    recognition.lang = "en-IN"; // 🔥 more reliable than hi-IN
+    recognition.continuous = true; // 🔥 keep listening
+    recognition.interimResults = false;
+
+    recognition.start();
+
+    let isDetected = false;
+
+    recognition.onresult = function(event) {
+        isDetected = true;
+
+        const spoken = event.results[0][0].transcript;
+
+        console.log("Detected:", spoken);
+
+        status.innerText = "You said: " + spoken;
+
+        calculateScore(spoken);
+
+        recognition.stop(); // stop after detection
+    };
+
+    recognition.onerror = function(err) {
+        status.innerText = "❌ Mic error: " + err.error;
+    };
+
+    recognition.onend = function() {
+        if (!isDetected) {
+            status.innerText = "⚠️ No speech detected. Try again.";
+        }
+    };
+}
+function calculateScore(spoken) {
+
+    const original = document.getElementById("text").value
+    .toLowerCase()
+    .replace(/राम/g, "ram")
+    .replace(/की/g, "ki")
+    .replace(/साथ/g, "saath")
+    .replace(/सीता/g, "seetha")
+    .replace(/वन/g,"van");
+
+    const spokenClean = spoken
+        .toLowerCase()
+        .replace(/[^\w\s]/gi, '');
+
+    const originalWords = original.split(" ");
+    const spokenWords = spokenClean.split(" ");
+
+    let matches = 0;
+
+    originalWords.forEach(word => {
+        if (spokenWords.includes(word)) {
+            matches++;
+        }
+    });
+
+    const score = matches / originalWords.length;
+
+    document.getElementById("pronunciationScore").innerText =
+        "Score: " + Math.round(score * 100) + "%";
+}
+
+function similarity(a, b) {
+    a = a.toLowerCase();
+    b = b.toLowerCase();
+
+    let matches = 0;
+    const minLength = Math.min(a.length, b.length);
+
+    for (let i = 0; i < minLength; i++) {
+        if (a[i] === b[i]) matches++;
+    }
+
+    return matches / Math.max(a.length, b.length);
+}
+
+function highlight(index) {
+    const all = document.querySelectorAll(".syllable");
+
+    all.forEach((s, i) => {
+        s.style.background = "transparent";
+        s.style.color = s.dataset.originalColor || "gold";
+    });
+
+    if (all[index]) {
+        all[index].style.background = "gold";
+        all[index].style.color = "black";
+    }
+}
+
+function renderSyllables(data) {
+    if (!data?.syllables || !data?.rhythm) return;
+
+    const combined = data.syllables.map((s, i) => {
+        const isLaghu = data.rhythm[i] === "L";
+        const color = isLaghu ? "#4ade80" : "#f59e0b";
+
+        if (isQuizMode) {
+            return `<span class="syllable" data-original-color="${color}" style="color:${color};">${s}</span>`;
+        }
+
+        return `<span class="syllable" data-original-color="${color}" style="color:${color};">
+            ${s} (${isLaghu ? "Laghu" : "Guru"})
+        </span>`;
+    });
+
+    document.getElementById("syllables").innerHTML = combined.join(" ");
+}
+
+function updateQuiz() {
+    if (!currentData || !currentData.syllables) return;
+
+    if (quizIndex >= currentData.syllables.length) {
+        document.getElementById("quizSyllable").innerText = "Finished!";
+        document.getElementById("quizResult").innerText = "Quiz complete!";
+        isQuizMode = false;
+        renderSyllables(currentData); // show answers now
+        return;
+    }
+
+    document.getElementById("quizSyllable").innerText =
+        currentData.syllables[quizIndex];
+
+    document.getElementById("quizResult").innerText = "";
+    document.getElementById("score").innerText = `Score: ${score}/${quizIndex}`;
+}
+
+function answer(userChoice) {
+    if (!currentData) return;
+
+    const correct = currentData.rhythm[quizIndex];
+
+    if (userChoice === correct) {
+        score++;
+        document.getElementById("quizResult").innerText = " Correct!";
+    } else {
+        document.getElementById("quizResult").innerText = " Wrong!";
+    }
+
+    quizIndex++;
+    document.getElementById("score").innerText = `Score: ${score}/${quizIndex}`;
+
+    setTimeout(updateQuiz, 500);
+}
+
+
+
+async function practice() {
+    const syllables = document.querySelectorAll(".syllable");
+
+    if (!syllables.length) {
+        alert("Generate chant first!");
+        return;
+    }
+
+    const audio = document.getElementById("chantPlayer");
+
+    if (!audio.src) {
+        alert("Audio not ready!");
+        return;
+    }
+
+    const speed = parseFloat(document.getElementById("speed").value);
+
+    audio.currentTime = 0;
+    audio.playbackRate = speed;
+    await audio.play();
+
+    await new Promise(resolve => {
+        if (audio.readyState >= 1) resolve();
+        else audio.onloadedmetadata = resolve;
+    });
+
+    const totalTime = audio.duration;
+    const stepTime = (totalTime / syllables.length) / speed;
+
+    for (let i = 0; i < syllables.length; i++) {
+        highlight(i);
+        await new Promise(r => setTimeout(r, stepTime * 1000 * 1.2));
+    }
+
+    syllables.forEach(s => {
+        s.style.background = "transparent";
+        s.style.color = s.dataset.originalColor || "gold";
+    });
+}
+
+async function generate() {
+    const text = document.getElementById("text").value;
+
+    if (!text) {
+        alert("Please enter text");
+        return;
+    }
+
+    const TOKEN = getToken();
+
+    try {
+        const res = await fetch(BASE_URL + "/api/chant/generate", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": TOKEN
+            },
+            body: JSON.stringify({ text })
+        });
+
+        const data = await res.json();
+        console.log("Response:", data);
+
+      
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        currentData = data;
+        quizIndex = 0;
+        score = 0;
+        isQuizMode = true;
+
+        if (data.audio) {
+            document.getElementById("chantPlayer").src = BASE_URL + data.audio;
+        }
+
+        renderSyllables(data);
+        updateQuiz();
+
+    } catch (err) {
+        console.error(err);
+        alert("Something went wrong");
+    }
+}
+
+async function compare() {
+    const text = document.getElementById("text").value;
+
+    if (!text) {
+        alert("Please enter text");
+        return;
+    }
+
+    const TOKEN = getToken();
+
+    try {
+        const res = await fetch(BASE_URL + "/api/chant/compare", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": TOKEN
+            },
+            body: JSON.stringify({ text })
+        });
+
+        const data = await res.json();
+        console.log("Compare:", data);
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        document.getElementById("normalPlayer").src = BASE_URL + data.normal;
+        document.getElementById("comparePlayer").src = BASE_URL + data.chant;
+
+    } catch (err) {
+        console.error(err);
+        alert("Compare failed");
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - ChantGuru</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Cinzel', serif;
+            background: #0f0c0a;
+            color: gold;
+            text-align: center;
+            padding: 50px;
+        }
+
+        input {
+            padding: 10px;
+            margin: 10px;
+            width: 250px;
+            border-radius: 8px;
+            border: 1px solid gold;
+            background: #111;
+            color: gold;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: gold;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>🕉️ Login</h1>
+
+<input id="email" placeholder="Email"><br>
+<input id="password" type="password" placeholder="Password"><br>
+
+<button onclick="login()">Login</button>
+
+<p>Don't have account? <a href="signup.html">Signup</a></p>
+
+<script>
+const BASE_URL = "http://localhost:3000";
+
+async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const res = await fetch(BASE_URL + "/api/auth/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (data.token) {
+        localStorage.setItem("token", data.token);
+        window.location.href = "app.html";
+    } else {
+        alert("Login failed");
+    }
+}
+</script>
+
+</body>
+</html>
